@@ -27,11 +27,29 @@ async function ensurePuter(): Promise<any> {
   });
 }
 
-function extractText(resp: any): string {
-  if (typeof resp === "string") return resp;
-  if (resp?.text) return resp.text;
-  if (resp?.message?.content) return resp.message.content;
-  if (Array.isArray(resp)) return resp.map(extractText).join("\n");
+function extractText(resp: unknown): string {
+  if (resp == null) return "";
+  if (typeof resp === "string" || typeof resp === "number" || typeof resp === "boolean") {
+    return String(resp);
+  }
+  if (Array.isArray(resp)) {
+    return resp.map((item) => extractText(item)).filter(Boolean).join("\n");
+  }
+  if (typeof resp === "object") {
+    const value = resp as {
+      type?: string;
+      text?: unknown;
+      content?: unknown;
+      parts?: unknown;
+      message?: { content?: unknown };
+    };
+
+    if (value.type === "text" && value.text !== undefined) return extractText(value.text);
+    if (value.text !== undefined) return extractText(value.text);
+    if (value.message?.content !== undefined) return extractText(value.message.content);
+    if (value.content !== undefined) return extractText(value.content);
+    if (value.parts !== undefined) return extractText(value.parts);
+  }
   return JSON.stringify(resp);
 }
 

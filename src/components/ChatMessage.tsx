@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import type { RouteResult } from "@/lib/ai-router";
 
 interface ChatMessageProps {
@@ -12,32 +12,56 @@ interface ChatMessageProps {
   isLoading?: boolean;
 }
 
-function TypewriterText({ text }: { text: string }) {
+function normalizeRenderableText(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeRenderableText(item)).filter(Boolean).join("\n");
+  }
+  if (typeof value === "object") {
+    const data = value as { type?: string; text?: unknown; content?: unknown };
+    if (data.type === "text" && data.text !== undefined) return normalizeRenderableText(data.text);
+    if (data.text !== undefined) return normalizeRenderableText(data.text);
+    if (data.content !== undefined) return normalizeRenderableText(data.content);
+  }
+  return JSON.stringify(value);
+}
+
+const TypewriterText = forwardRef<HTMLSpanElement, { text: unknown }>(function TypewriterText({ text }, ref) {
+  const safeText = normalizeRenderableText(text);
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (!text) return;
+    if (!safeText) {
+      setDisplayed("");
+      setDone(true);
+      return;
+    }
+
     let i = 0;
     setDisplayed("");
     setDone(false);
     const interval = setInterval(() => {
       i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) {
+      setDisplayed(safeText.slice(0, i));
+      if (i >= safeText.length) {
         clearInterval(interval);
         setDone(true);
       }
     }, 8);
+
     return () => clearInterval(interval);
-  }, [text]);
+  }, [safeText]);
 
   return (
-    <span className={!done ? "typewriter-cursor" : ""}>
+    <span ref={ref} className={!done ? "typewriter-cursor" : ""}>
       {displayed}
     </span>
   );
-}
+});
 
 export default function ChatMessage({ role, content, route, isImage, isVideo, fallbackUsed, isLoading }: ChatMessageProps) {
   if (role === "user") {
