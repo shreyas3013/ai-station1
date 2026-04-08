@@ -13,6 +13,17 @@ Avoid robotic tone.
 Give structured, helpful answers.
 Be clear, concise, and human-like.`;
 
+export const MODEL_OPTIONS: Array<{ value: ModelType | "auto"; label: string; icon: string }> = [
+  { value: "auto", label: "Auto", icon: "🧠" },
+  { value: "claude", label: "Claude", icon: "⚡" },
+  { value: "gpt", label: "GPT-4o", icon: "🤖" },
+  { value: "gemini", label: "Gemini", icon: "✨" },
+  { value: "groq", label: "Groq", icon: "⚡" },
+  { value: "perplexity", label: "Perplexity", icon: "🔍" },
+  { value: "image", label: "Image Gen", icon: "🎨" },
+  { value: "video", label: "Video Gen", icon: "🎬" },
+];
+
 export function detectModel(input: string): RouteResult {
   const text = input.toLowerCase();
 

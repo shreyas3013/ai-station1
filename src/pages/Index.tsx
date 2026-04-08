@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import ParticlesBackground from "@/components/ParticlesBackground";
 import HeroSection from "@/components/HeroSection";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
-import { aiGateway, type AIResponse } from "@/lib/ai-gateway";
-import type { RouteResult } from "@/lib/ai-router";
+import { aiGateway, clearConversationHistory, type AIResponse } from "@/lib/ai-gateway";
+import type { RouteResult, ModelType } from "@/lib/ai-router";
 
 interface Message {
   id: string;
@@ -24,6 +24,7 @@ interface Message {
 export default function Index() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelType | "auto">("auto");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -46,7 +47,7 @@ export default function Index() {
     setIsLoading(true);
 
     try {
-      const response: AIResponse = await aiGateway(input);
+      const response: AIResponse = await aiGateway(input, selectedModel);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === loadingId
@@ -87,6 +88,11 @@ export default function Index() {
     sendMessage(prompt);
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    clearConversationHistory();
+  };
+
   const hasMessages = messages.length > 0;
 
   return (
@@ -111,6 +117,16 @@ export default function Index() {
             animate={{ opacity: 1 }}
             className="flex-1 overflow-y-auto py-6 space-y-2"
           >
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={clearChat}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted/50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear chat
+              </button>
+            </div>
+
             {messages.map((msg) => (
               <div key={msg.id}>
                 <ChatMessage
@@ -140,7 +156,12 @@ export default function Index() {
         )}
 
         <div className="sticky bottom-0 pb-6 pt-2">
-          <ChatInput onSend={sendMessage} disabled={isLoading} />
+          <ChatInput
+            onSend={sendMessage}
+            disabled={isLoading}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+          />
           <p className="text-center text-[11px] text-muted-foreground/50 mt-3">
             AI STATION routes your query to the best model automatically
           </p>
