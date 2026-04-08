@@ -27,10 +27,18 @@ async function ensurePuter(): Promise<any> {
   });
 }
 
+function extractText(resp: any): string {
+  if (typeof resp === "string") return resp;
+  if (resp?.text) return resp.text;
+  if (resp?.message?.content) return resp.message.content;
+  if (Array.isArray(resp)) return resp.map(extractText).join("\n");
+  return JSON.stringify(resp);
+}
+
 async function callClaude(prompt: string): Promise<string> {
   const puter = await ensurePuter();
   const resp = await puter.ai.chat(SYSTEM_PROMPT + "\n\nUser: " + prompt, { model: "claude-sonnet-4" });
-  return typeof resp === "string" ? resp : resp?.message?.content || resp?.text || JSON.stringify(resp);
+  return extractText(resp);
 }
 
 async function callGPT(prompt: string): Promise<string> {
