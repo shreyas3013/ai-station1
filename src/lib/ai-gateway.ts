@@ -56,7 +56,7 @@ async function callGemini(prompt: string): Promise<string> {
 async function callPerplexity(prompt: string): Promise<string> {
   const puter = await ensurePuter();
   const resp = await puter.ai.chat(prompt, { model: "gpt-4o" });
-  return typeof resp === "string" ? resp : resp?.message?.content || resp?.text || JSON.stringify(resp);
+  return extractText(resp);
 }
 
 async function generateImage(prompt: string): Promise<string> {
