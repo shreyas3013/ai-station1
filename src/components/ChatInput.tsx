@@ -1,15 +1,20 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Send, Paperclip, Loader2 } from "lucide-react";
+import { Send, Paperclip, Loader2, Mic, MicOff } from "lucide-react";
+import { MODEL_OPTIONS, type ModelType } from "@/lib/ai-router";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled: boolean;
+  selectedModel: ModelType | "auto";
+  onModelChange: (model: ModelType | "auto") => void;
 }
 
-export default function ChatInput({ onSend, disabled }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled, selectedModel, onModelChange }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const handleSend = () => {
     if (!input.trim() || disabled) return;
@@ -38,12 +43,63 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0].transcript)
+        .join("");
+      setInput(transcript);
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-strong rounded-2xl p-2"
+      className="glass-strong rounded-2xl p-2 space-y-2"
     >
+      {/* Model selector */}
+      <div className="flex items-center gap-1.5 px-1 overflow-x-auto scrollbar-none">
+        {MODEL_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onModelChange(opt.value)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              selectedModel === opt.value
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
+          >
+            <span>{opt.icon}</span>
+            <span>{opt.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex items-end gap-2">
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -59,6 +115,22 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           accept=".txt,.md,.pdf"
           className="hidden"
         />
+
+        <button
+          onClick={toggleVoiceInput}
+          className={`p-2.5 rounded-xl transition-colors ${
+            isListening
+              ? "text-destructive bg-destructive/10 animate-pulse"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+          title={isListening ? "Stop listening" : "Voice input"}
+        >
+          {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+        </button>
+
+        {isListening && (
+          <span className="text-xs text-destructive animate-pulse whitespace-nowrap">🎙️ Listening...</span>
+        )}
 
         <textarea
           value={input}

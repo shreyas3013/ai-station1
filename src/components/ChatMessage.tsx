@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { forwardRef, useEffect, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import type { RouteResult } from "@/lib/ai-router";
 
 interface ChatMessageProps {
@@ -63,7 +64,37 @@ const TypewriterText = forwardRef<HTMLSpanElement, { text: unknown }>(function T
   );
 });
 
+function SpeakButton({ text }: { text: string }) {
+  const [speaking, setSpeaking] = useState(false);
+
+  const toggle = () => {
+    if (speaking) {
+      speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+      title={speaking ? "Stop speaking" : "Read aloud"}
+    >
+      {speaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+      {speaking ? "Stop" : "Listen"}
+    </button>
+  );
+}
+
 export default function ChatMessage({ role, content, route, isImage, isVideo, fallbackUsed, isLoading }: ChatMessageProps) {
+  const safeContent = normalizeRenderableText(content);
+
   if (role === "user") {
     return (
       <motion.div
@@ -72,7 +103,7 @@ export default function ChatMessage({ role, content, route, isImage, isVideo, fa
         className="flex justify-end mb-4"
       >
         <div className="max-w-[75%] rounded-2xl rounded-br-sm bg-primary/20 border border-primary/30 px-4 py-3">
-          <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+          <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{safeContent}</p>
         </div>
       </motion.div>
     );
@@ -118,7 +149,7 @@ export default function ChatMessage({ role, content, route, isImage, isVideo, fa
             <motion.img
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              src={content}
+              src={safeContent}
               alt="AI Generated"
               className="rounded-lg max-w-full"
               loading="lazy"
@@ -126,11 +157,12 @@ export default function ChatMessage({ role, content, route, isImage, isVideo, fa
           ) : isVideo ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">🎬 Video generated:</p>
-              <video src={content} controls className="rounded-lg max-w-full" />
+              <video src={safeContent} controls className="rounded-lg max-w-full" />
             </div>
           ) : (
             <div className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
-              <TypewriterText text={content} />
+              <TypewriterText text={safeContent} />
+              <SpeakButton text={safeContent} />
             </div>
           )}
         </div>
